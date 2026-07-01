@@ -80,18 +80,31 @@ function init() {
 }
 
 function listenToFirebase() {
-    const q = query(collection(db, "transactions"), orderBy("timestamp", "desc"));
-    
-    onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-        transactions = [];
-        snapshot.forEach((doc) => {
-            transactions.push({ id: doc.id, ...doc.data(), pending: doc.metadata.hasPendingWrites });
-        });
+    try {
+        const q = query(collection(db, "transactions"), orderBy("timestamp", "desc"));
         
-        renderDashboard();
-        populateMonthFilter();
-        renderHistory();
-    });
+        onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+            try {
+                transactions = [];
+                snapshot.forEach((doc) => {
+                    transactions.push({ id: doc.id, ...doc.data(), pending: doc.metadata.hasPendingWrites });
+                });
+                
+                renderDashboard();
+                populateMonthFilter();
+                renderHistory();
+            } catch (renderError) {
+                console.error("Render Error:", renderError);
+                alert("Error al dibujar la interfaz: " + renderError.message);
+            }
+        }, (error) => {
+            console.error("Firebase Error:", error);
+            alert("Error conectando a Firebase: " + error.code + " - " + error.message);
+        });
+    } catch (initError) {
+        console.error("Init Error:", initError);
+        alert("Error inicializando lectura: " + initError.message);
+    }
 }
 
 function setupEventListeners() {
