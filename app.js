@@ -247,7 +247,7 @@ async function analyzeTicketWithAI(base64Str) {
            "type": "gasto",
            "category": "Comida"
         }
-        Elige category estrictamente entre: Comida supermercado, Comidas fuera, Ocio, Transporte, Facturas, Ropa, Otros.`;
+        Elige category estrictamente entre: Comida supermercado, Comidas fuera, Ocio, Transporte, Facturas, Ropa, Piso, Otros.`;
         
         const image = {
             inlineData: { data: base64Data, mimeType: mimeType }
@@ -426,7 +426,7 @@ function calculateMetrics() {
     let monthExpenseStr = 0;
     let monthIncomeStr = 0;
     
-    let categoryTotals = { 'Comida supermercado': 0, 'Comidas fuera': 0, 'Ocio': 0, 'Transporte': 0, 'Facturas': 0, 'Ropa': 0, 'Otros': 0 };
+    let categoryTotals = { 'Comida supermercado': 0, 'Comidas fuera': 0, 'Ocio': 0, 'Transporte': 0, 'Facturas': 0, 'Ropa': 0, 'Piso': 0, 'Otros': 0 };
 
     transactions.forEach(t => {
         if (t.type === 'gasto') totalExpense += t.amount;
@@ -453,12 +453,13 @@ function calculateMetrics() {
     // Contar cuántos meses de alquiler quedan realmente pendientes verificando los pagos
     let rentMonthsPending = 0;
     RENT_MONTHS.forEach(rm => {
-        const isPaid = transactions.some(t => {
+        // Julio 2026 se marca como pagado por defecto
+        const isPaid = (rm.y === 2026 && rm.m === 6) || transactions.some(t => {
             const d = new Date(t.date);
             return t.type === 'gasto' && 
                    d.getFullYear() === rm.y && 
                    d.getMonth() === rm.m && 
-                   t.concept.toLowerCase().includes('alquiler');
+                   (t.category === 'Piso' || t.concept.toLowerCase().includes('alquiler'));
         });
         if (!isPaid) rentMonthsPending++;
     });
@@ -503,12 +504,13 @@ function renderDashboard() {
     if (rentList) {
         rentList.innerHTML = '';
         RENT_MONTHS.forEach(rm => {
-            const isPaid = transactions.some(t => {
+            // Julio 2026 se marca como pagado por defecto
+            const isPaid = (rm.y === 2026 && rm.m === 6) || transactions.some(t => {
                 const d = new Date(t.date);
                 return t.type === 'gasto' && 
-                       d.getFullYear() === rm.y && 
-                       d.getMonth() === rm.m && 
-                       t.concept.toLowerCase().includes('alquiler');
+                   d.getFullYear() === rm.y && 
+                   d.getMonth() === rm.m && 
+                   (t.category === 'Piso' || t.concept.toLowerCase().includes('alquiler'));
             });
             
             const div = document.createElement('div');
@@ -560,7 +562,16 @@ function renderDashboard() {
     const catList = document.getElementById('categoryList');
     if (catList) {
         catList.innerHTML = '';
-        const catColors = { 'Comida': '#10b981', 'Comida supermercado': '#10b981', 'Comidas fuera': '#f43f5e', 'Ocio': '#8b5cf6', 'Transporte': '#f59e0b', 'Facturas': '#ef4444', 'Ropa': '#ec4899', 'Otros': '#64748b' };
+        const catColors = {
+            'Comida supermercado': '#10b981',
+            'Comidas fuera': '#3b82f6',
+            'Ocio': '#8b5cf6',
+            'Ropa': '#ec4899',
+            'Transporte': '#f59e0b',
+            'Facturas': '#06b6d4',
+            'Piso': '#6366f1',
+            'Otros': '#64748b'
+        };
         const sortedCats = Object.entries(metrics.categoryTotals).sort((a,b) => b[1] - a[1]);
         
         sortedCats.forEach(([cat, amount]) => {
