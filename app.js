@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
 // Tu configuración de Firebase
 const firebaseConfig = {
@@ -24,7 +25,8 @@ let transactions = [];
 let settings = JSON.parse(localStorage.getItem('fin_settings')) || {
     capital: 6820,
     rent: 375,
-    startDate: '2026-07-01'
+    startDate: '2026-07-01',
+    geminiKey: ''
 };
 
 // Date formatter
@@ -112,6 +114,7 @@ function setupEventListeners() {
     document.getElementById('btnSettings').addEventListener('click', () => {
         document.getElementById('setCapital').value = settings.capital;
         document.getElementById('setRent').value = settings.rent;
+        document.getElementById('setGeminiKey').value = settings.geminiKey || '';
         openModal(settingsModal);
     });
 
@@ -125,9 +128,13 @@ function setupEventListeners() {
         const file = this.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 ticketPreview.src = e.target.result;
                 ticketPreview.classList.remove('hidden');
+                
+                if (settings.geminiKey) {
+                    await analyzeTicketWithAI(e.target.result);
+                }
             }
             reader.readAsDataURL(file);
         } else {
@@ -135,6 +142,47 @@ function setupEventListeners() {
             ticketPreview.src = '';
         }
     });
+
+async function analyzeTicketWithAI(base64Str) {
+    const aiStatus = document.getElementById('aiStatus');
+    aiStatus.classList.remove('hidden');
+    
+    try {
+        const genAI = new GoogleGenerativeAI(settings.geminiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        
+        const base64Data = base64Str.split(',')[1];
+        const mimeType = base64Str.match(/data:(.*?);/)[1];
+        
+        const prompt = `Eres un asistente experto en finanzas que lee tickets. Extrae la información y devuelve SOLO un objeto JSON válido con este exacto formato, sin nada más:
+        {
+           "concept": "Resumen del lugar o compra (ej: Mercadona, Gasolinera Repsol)",
+           "amount": 23.50,
+           "type": "gasto"
+        }`;
+        
+        const image = {
+            inlineData: { data: base64Data, mimeType: mimeType }
+        };
+        
+        const result = await model.generateContent([prompt, image]);
+        const responseText = result.response.text();
+        
+        const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const data = JSON.parse(jsonStr);
+        
+        if (data.concept) document.getElementById('concept').value = data.concept;
+        if (data.amount) document.getElementById('amount').value = data.amount;
+        if (data.type) {
+            document.querySelector(`input[name="type"][value="${data.type}"]`).checked = true;
+        }
+    } catch(err) {
+        console.error("AI Error:", err);
+        alert("No se pudo analizar el ticket con la IA. Comprueba tu API Key.");
+    } finally {
+        aiStatus.classList.add('hidden');
+    }
+}
 
     addForm.addEventListener('submit', handleAddTransaction);
     settingsForm.addEventListener('submit', handleSaveSettings);
@@ -165,6 +213,7 @@ function handleSaveSettings(e) {
     e.preventDefault();
     settings.capital = parseFloat(document.getElementById('setCapital').value);
     settings.rent = parseFloat(document.getElementById('setRent').value);
+    settings.geminiKey = document.getElementById('setGeminiKey').value;
     saveSettings();
     closeModal(settingsModal);
     renderDashboard();

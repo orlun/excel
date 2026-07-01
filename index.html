@@ -162,6 +162,9 @@
                                 <span>Hacer foto o subir ticket</span>
                             </div>
                             <img id="ticketPreview" class="ticket-preview hidden" alt="Vista previa del ticket">
+                            <p id="aiStatus" class="hidden" style="color: var(--primary-color); font-size: 0.8rem; margin-top: 8px; text-align: center;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Analizando ticket con IA...
+                            </p>
                         </div>
                     </div>
 
@@ -186,6 +189,10 @@
                     <div class="form-group">
                         <label for="setRent">Alquiler Mensual Fijo (€)</label>
                         <input type="number" id="setRent" step="0.01" value="375" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="setGeminiKey">Clave Inteligencia Artificial (Opcional)</label>
+                        <input type="password" id="setGeminiKey" placeholder="Tu API Key de Gemini">
                     </div>
                     <button type="submit" class="btn-primary btn-block">Guardar Configuración</button>
                     
