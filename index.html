@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Financiero Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navegación -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" data-tab="dashboard">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Resumen</span>
+            </a>
+            <a href="#" class="nav-item action-button" id="btnAddExpense">
+                <div class="fab">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+            </a>
+            <a href="#" class="nav-item" data-tab="history">
+                <i class="fa-solid fa-list-ul"></i>
+                <span>Historial</span>
+            </a>
+        </nav>
+
+        <!-- Tab: Dashboard -->
+        <main class="tab-content active" id="tab-dashboard">
+            <header class="app-header">
+                <div class="greeting">
+                    <h1>Hola, Iván</h1>
+                    <p id="currentDate">Cargando...</p>
+                </div>
+                <div class="profile-pic">
+                    <i class="fa-solid fa-user-graduate"></i>
+                </div>
+            </header>
+
+            <section class="balance-card glass-panel">
+                <div class="balance-header">
+                    <p>Capital Disponible</p>
+                    <button id="btnSettings"><i class="fa-solid fa-gear"></i></button>
+                </div>
+                <h2 id="totalBalance">0.00 €</h2>
+                <div class="balance-stats">
+                    <div class="stat">
+                        <i class="fa-solid fa-arrow-trend-down text-danger"></i>
+                        <div>
+                            <p class="stat-label">Gasto Mes</p>
+                            <p class="stat-value text-danger" id="monthExpense">0.00 €</p>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <i class="fa-solid fa-arrow-trend-up text-success"></i>
+                        <div>
+                            <p class="stat-label">Ingreso Mes</p>
+                            <p class="stat-value text-success" id="monthIncome">0.00 €</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="insights">
+                <h3 class="section-title">Previsiones</h3>
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <div class="insight-icon bg-blue">
+                            <i class="fa-solid fa-calendar-day"></i>
+                        </div>
+                        <div class="insight-info">
+                            <p class="insight-label">Presupuesto Diario</p>
+                            <p class="insight-value" id="dailyBudget">0.00 €</p>
+                        </div>
+                    </div>
+                    <div class="insight-card">
+                        <div class="insight-icon bg-purple">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                        <div class="insight-info">
+                            <p class="insight-label">Viabilidad</p>
+                            <p class="insight-value" id="viability">0 meses</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="recent-transactions">
+                <div class="section-header">
+                    <h3 class="section-title">Últimos movimientos</h3>
+                    <a href="#" class="view-all" onclick="document.querySelector('[data-tab=\'history\']').click()">Ver todo</a>
+                </div>
+                <div class="transaction-list" id="recentTransactionsList">
+                    <!-- Transactions inserted here via JS -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Tab: History -->
+        <main class="tab-content" id="tab-history">
+            <header class="app-header no-margin">
+                <h1>Historial de Gastos</h1>
+            </header>
+            
+            <div class="filter-bar">
+                <select id="monthFilter" class="modern-select">
+                    <!-- Months populated via JS -->
+                </select>
+                <button class="btn-export" id="btnExport" title="Exportar a CSV">
+                    <i class="fa-solid fa-download"></i> CSV
+                </button>
+            </div>
+
+            <div class="transaction-list full-height" id="allTransactionsList">
+                <!-- Transactions inserted here via JS -->
+            </div>
+        </main>
+
+        <!-- Modal: Add Transaction -->
+        <div class="modal-overlay" id="addModal">
+            <div class="modal-content glass-panel">
+                <div class="modal-header">
+                    <h2>Nuevo Movimiento</h2>
+                    <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <form id="addForm">
+                    <div class="toggle-switch">
+                        <input type="radio" id="typeExpense" name="type" value="gasto" checked>
+                        <label for="typeExpense" class="toggle-label expense-label">Gasto</label>
+                        <input type="radio" id="typeIncome" name="type" value="ingreso">
+                        <label for="typeIncome" class="toggle-label income-label">Ingreso</label>
+                    </div>
+
+                    <div class="form-group amount-group">
+                        <label for="amount">Importe</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-euro-sign"></i>
+                            <input type="number" id="amount" step="0.01" min="0" placeholder="0.00" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="concept">Concepto</label>
+                        <input type="text" id="concept" placeholder="Ej: Compra supermercado" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">Fecha</label>
+                        <input type="date" id="date" required>
+                    </div>
+
+                    <!-- Photo Upload for Tickets -->
+                    <div class="form-group">
+                        <label for="ticketPhoto">Ticket (Opcional)</label>
+                        <div class="file-upload">
+                            <input type="file" id="ticketPhoto" accept="image/*" capture="environment">
+                            <div class="file-upload-visual">
+                                <i class="fa-solid fa-camera"></i>
+                                <span>Hacer foto o subir ticket</span>
+                            </div>
+                            <img id="ticketPreview" class="ticket-preview hidden" alt="Vista previa del ticket">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary btn-block">Guardar Movimiento</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal: Settings -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="modal-content glass-panel">
+                <div class="modal-header">
+                    <h2>Configuración Inicial</h2>
+                    <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <form id="settingsForm">
+                    <p class="settings-desc">Ajusta tus datos base para calcular las previsiones correctamente.</p>
+                    <div class="form-group">
+                        <label for="setCapital">Capital Inicial (€)</label>
+                        <input type="number" id="setCapital" step="0.01" value="6820" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="setRent">Alquiler Mensual Fijo (€)</label>
+                        <input type="number" id="setRent" step="0.01" value="375" required>
+                    </div>
+                    <button type="submit" class="btn-primary btn-block">Guardar Configuración</button>
+                    
+                    <button type="button" id="btnResetData" class="btn-danger btn-block mt-3">
+                        <i class="fa-solid fa-trash"></i> Borrar todos los datos
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Modal: View Ticket -->
+        <div class="modal-overlay" id="viewTicketModal">
+            <div class="modal-content image-modal glass-panel">
+                <div class="modal-header">
+                    <h2>Ver Ticket</h2>
+                    <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="ticket-image-container">
+                    <img id="fullTicketImage" src="" alt="Ticket">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="app.js"></script>
+</body>
+</html>
