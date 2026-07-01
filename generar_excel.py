@@ -24,10 +24,10 @@ NUM_ROWS = 500  # filas para apuntar gastos
 
 MESES_LABEL = [
     "Jul 2026","Ago 2026","Sep 2026","Oct 2026","Nov 2026","Dic 2026",
-    "Ene 2027","Feb 2027","Mar 2027","Abr 2027","May 2027","Jun 2027"
+    "Ene 2027","Feb 2027","Mar 2027","Abr 2027","May 2027","Jun 2027", "Jul 2027"
 ]
-MESES_NUM  = [7,8,9,10,11,12,1,2,3,4,5,6]
-MESES_YEAR = [2026]*6 + [2027]*6
+MESES_NUM  = [7,8,9,10,11,12,1,2,3,4,5,6,7]
+MESES_YEAR = [2026]*6 + [2027]*7
 
 EUR = '#,##0.00 €'
 PCT = '0.0%'
@@ -252,7 +252,7 @@ for r in range(1, 85):
 
 # ── HEADER ──
 for c in range(1, 11): S(ws.cell(1, c), fill=fl_n)
-merge(ws, 'B2:I2', '💰  DASHBOARD — Control Financiero Jul 2026 · Jun 2027', ft_title, fl_n)
+merge(ws, 'B2:I2', '💰  DASHBOARD — Control Financiero Jul 2026 · Jul 2027', ft_title, fl_n)
 for c in [1,10]: S(ws.cell(2, c), fill=fl_n)
 merge(ws, 'B3:I3',
     f'Capital: {CAPITAL:,} €  ·  Alquiler: {ALQUILER} €/mes  ·  Todo se calcula del Registro Diario',
@@ -268,7 +268,7 @@ ws.row_dimensions[4].height = 3
 # J1 = Total gastos sin alquiler (solo variable)
 # J2 = Total ingresos
 # J3 = Días transcurridos desde 1 Jul 2026
-# J4 = Días restantes hasta 30 Jun 2027
+# J4 = Días restantes hasta 31 Jul 2027
 
 # No, better to put helpers in visible cells with labels. Let me use a clean approach.
 # I'll compute everything inline in the KPI formulas.
@@ -311,12 +311,12 @@ S(ws.cell(15, 2), ft_lbl, fl_cb, al, bd)
 ws.cell(15, 3).value = (
     f'=IFERROR('
     f'({saldo_formula.lstrip("=")}'
-    f'-MAX(0,12-MAX(1,MONTH(TODAY())-6+IF(MONTH(TODAY())<7,6,0)))*{ALQUILER})'
-    f'/MAX(1,DATE(2027,6,30)-TODAY())'
+    f'-MAX(0,13-MAX(1,MONTH(TODAY())-6+IF(MONTH(TODAY())<7,6,0)))*{ALQUILER})'
+    f'/MAX(1,DATE(2027,7,31)-TODAY())'
     f',0)'
 )
 S(ws.cell(15, 3), ft_kpi, fl_cb, ac, bd, EUR)
-ws.cell(15, 4).value = 'Lo que puedes gastar al día para llegar a junio 2027'
+ws.cell(15, 4).value = 'Lo que puedes gastar al día para llegar a julio 2027'
 S(ws.cell(15, 4), ft_sm, fl_cb, al, bd)
 
 # Fila 16: Gasto mensual proyectado
@@ -328,14 +328,14 @@ ws.cell(16, 4).value = 'Proyección basada en tu media diaria × 30 días'
 S(ws.cell(16, 4), ft_sm, fl_a, al, bd)
 
 # Fila 17: Saldo previsto a fin de periodo
-ws.cell(17, 2).value = '🎯 Saldo previsto a Jun 2027'
+ws.cell(17, 2).value = '🎯 Saldo previsto a Jul 2027'
 S(ws.cell(17, 2), ft_lbl, fl_cb, al, bd)
 # = Saldo actual - (media diaria * días restantes)
 ws.cell(17, 3).value = (
     f'=IFERROR('
     f'{saldo_formula.lstrip("=")}' 
     f'-(SUMPRODUCT(({DT}="Gasto")*{DA})/MAX(1,TODAY()-DATE(2026,7,1)))'
-    f'*MAX(0,DATE(2027,6,30)-TODAY())'
+    f'*MAX(0,DATE(2027,7,31)-TODAY())'
     f',0)'
 )
 S(ws.cell(17, 3), ft_kpi, fl_cb, ac, bd, EUR)
@@ -389,7 +389,7 @@ for i, h in enumerate(hdrs_m):
     cell.value = h
     S(cell, ft_hdr, fl_h, ac, bd)
 
-for m in range(12):
+for m in range(13):
     r = 25 + m
     mn = MESES_NUM[m]
     yr = MESES_YEAR[m]
@@ -430,31 +430,31 @@ for m in range(12):
     S(ws.cell(r, 7), F(sz=11, b=True, c=CN), bg, ac, bd, EUR)
 
 # Formato condicional acumulado
-ws.conditional_formatting.add('G25:G36',
+ws.conditional_formatting.add('G25:G37',
     CellIsRule('lessThan', ['500'], fill=fl_rl, font=F(b=True, c=CR)))
-ws.conditional_formatting.add('G25:G36',
+ws.conditional_formatting.add('G25:G37',
     CellIsRule('between', ['500','1500'], fill=fl_al, font=F(b=True, c=CA)))
 
 # Data bar en acumulado
-ws.conditional_formatting.add('G25:G36',
+ws.conditional_formatting.add('G25:G37',
     DataBarRule(start_type='num', start_value=0, end_type='num', 
                end_value=CAPITAL, color=CB))
 
 # Totales
-tr = 37
+tr = 38
 ws.cell(tr, 2).value = '📊 TOTAL'
 S(ws.cell(tr, 2), ft_lbl, fl_cb, ac, bd)
 for ci in range(3, 8):
     cl = get_column_letter(ci)
     if ci <= 6:
-        ws.cell(tr, ci).value = f"=SUM({cl}25:{cl}36)"
+        ws.cell(tr, ci).value = f"=SUM({cl}25:{cl}37)"
     elif ci == 7:
-        ws.cell(tr, ci).value = "=G36"
+        ws.cell(tr, ci).value = "=G37"
     fnt = ft_vr if ci in (3,4) else ft_vg if ci == 5 else ft_kpi if ci == 7 else ft_vb
     S(ws.cell(tr, ci), fnt, fl_cb, ac, bd, EUR)
 
 # Media
-tr2 = 38
+tr2 = 39
 ws.cell(tr2, 2).value = '📊 MEDIA/MES'
 S(ws.cell(tr2, 2), ft_lbl, fl_ca, ac, bd)
 for ci in range(3, 7):
@@ -468,8 +468,8 @@ ch1 = LineChart()
 ch1.title = "Evolución del Saldo Acumulado (€)"
 ch1.style = 10; ch1.width = 30; ch1.height = 14
 ch1.y_axis.title = "€"
-d1 = Reference(ws, min_col=7, min_row=24, max_row=36)
-c1 = Reference(ws, min_col=2, min_row=25, max_row=36)
+d1 = Reference(ws, min_col=7, min_row=24, max_row=37)
+c1 = Reference(ws, min_col=2, min_row=25, max_row=37)
 ch1.add_data(d1, titles_from_data=True)
 ch1.set_categories(c1)
 ln = ch1.series[0]
@@ -483,12 +483,12 @@ ch2.type = "col"; ch2.title = "Gastos por Mes (€)"
 ch2.style = 10; ch2.width = 30; ch2.height = 14
 ch2.y_axis.title = "€"
 # Alquiler
-d2a = Reference(ws, min_col=3, min_row=24, max_row=36)
+d2a = Reference(ws, min_col=3, min_row=24, max_row=37)
 ch2.add_data(d2a, titles_from_data=True)
 # Otros gastos
-d2b = Reference(ws, min_col=4, min_row=24, max_row=36)
+d2b = Reference(ws, min_col=4, min_row=24, max_row=37)
 ch2.add_data(d2b, titles_from_data=True)
-c2 = Reference(ws, min_col=2, min_row=25, max_row=36)
+c2 = Reference(ws, min_col=2, min_row=25, max_row=37)
 ch2.set_categories(c2)
 ch2.grouping = "stacked"
 ws.add_chart(ch2, "B56")

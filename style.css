@@ -260,6 +260,44 @@ body {
     font-weight: 500;
 }
 
+/* Rent Tracking */
+.rent-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: var(--spacing-lg);
+}
+.rent-month {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    padding: 10px 2px;
+    border-radius: var(--border-radius-sm);
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.rent-month i {
+    font-size: 1rem;
+}
+.rent-month.paid {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success);
+}
+.rent-month.pending {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--text-secondary);
+}
+.rent-month.pending i {
+    color: var(--warning);
+}
+
 /* Insights Grid */
 .insights-grid {
     display: grid;

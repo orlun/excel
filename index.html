@@ -10,7 +10,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div class="app-container">
+    <!-- Login Screen -->
+    <div id="loginScreen" class="app-container" style="display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;">
+        <div class="glass-panel" style="padding: 30px; text-align: center; width: 100%;">
+            <h2 style="margin-bottom: 15px;"><i class="fa-solid fa-lock"></i> Área Privada</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 25px;">Solo acceso autorizado.</p>
+            <button id="btnLogin" class="btn-primary btn-block" style="background-color: white; color: #333;">
+                <img src="https://cdn1.iconfinder.com/data/icons/google-s-logo/150/Google_Icons-09-512.png" width="20" style="vertical-align: middle; margin-right: 10px;">
+                Entrar con Google
+            </button>
+            <p id="loginError" class="text-danger hidden" style="margin-top: 15px; font-size: 0.9rem;"></p>
+        </div>
+    </div>
+
+    <!-- App Content (Hidden initially) -->
+    <div id="mainApp" class="app-container hidden">
         <!-- Navegación -->
         <nav class="bottom-nav">
             <a href="#" class="nav-item active" data-tab="dashboard">
@@ -68,6 +82,16 @@
                             <p class="stat-value text-success" id="monthIncome">0.00 €</p>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section class="rent-tracking">
+                <div class="section-header">
+                    <h3 class="section-title">Control de Alquiler</h3>
+                    <span id="rentPendingCount" class="text-warning" style="font-size:0.85rem; font-weight:600;">12 pendientes</span>
+                </div>
+                <div class="rent-grid" id="rentList">
+                    <!-- Meses generados por JS -->
                 </div>
             </section>
 
@@ -141,6 +165,7 @@
                     <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <form id="addForm">
+                    <input type="hidden" id="editTransactionId" value="">
                     <div class="toggle-switch">
                         <input type="radio" id="typeExpense" name="type" value="gasto" checked>
                         <label for="typeExpense" class="toggle-label expense-label">Gasto</label>
@@ -164,10 +189,12 @@
                     <div class="form-group" id="categoryGroup">
                         <label for="category">Categoría</label>
                         <select id="category" class="modern-select" required>
-                            <option value="Comida">🛒 Comida (Supermercado, bares...)</option>
+                            <option value="Comida supermercado">🛒 Comida supermercado (Mercadona, Consum...)</option>
+                            <option value="Comidas fuera">🍔 Comidas fuera (Restaurantes, bares...)</option>
                             <option value="Ocio">🍿 Ocio (Cine, suscripciones, fiestas...)</option>
                             <option value="Transporte">🚌 Transporte (Gasolina, bonobús...)</option>
                             <option value="Facturas">💡 Facturas (Luz, internet...)</option>
+                            <option value="Ropa">👕 Ropa</option>
                             <option value="Otros">📦 Otros</option>
                         </select>
                     </div>

@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
@@ -21,6 +22,11 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
 });
 const storage = getStorage(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// Pon aquí tu correo para que SOLO TÚ puedas entrar
+const ALLOWED_EMAIL = "ivan.sanchez.roman@gmail.com"; 
 
 // ===== Constants & State =====
 let transactions = [];
@@ -71,14 +77,74 @@ const fullTicketImage = document.getElementById('fullTicketImage');
 // Add a loading state for the submit button
 const submitBtn = addForm.querySelector('button[type="submit"]');
 
-// ===== Initialization =====
-function init() {
+const RENT_MONTHS = [
+    { label: 'Jul 26', y: 2026, m: 6 },
+    { label: 'Ago 26', y: 2026, m: 7 },
+    { label: 'Sep 26', y: 2026, m: 8 },
+    { label: 'Oct 26', y: 2026, m: 9 },
+    { label: 'Nov 26', y: 2026, m: 10 },
+    { label: 'Dic 26', y: 2026, m: 11 },
+    { label: 'Ene 27', y: 2027, m: 0 },
+    { label: 'Feb 27', y: 2027, m: 1 },
+    { label: 'Mar 27', y: 2027, m: 2 },
+    { label: 'Abr 27', y: 2027, m: 3 },
+    { label: 'May 27', y: 2027, m: 4 },
+    { label: 'Jun 27', y: 2027, m: 5 }
+];
+
+// ===== Auth & Initialization =====
+onAuthStateChanged(auth, (user) => {
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    const loginError = document.getElementById('loginError');
+
+    if (user) {
+        if (ALLOWED_EMAIL !== "tu_email@gmail.com" && user.email !== ALLOWED_EMAIL) {
+            signOut(auth);
+            loginError.textContent = `El correo ${user.email} no está autorizado.`;
+            loginError.classList.remove('hidden');
+            loginScreen.classList.remove('hidden');
+            mainApp.classList.add('hidden');
+        } else if (ALLOWED_EMAIL === "tu_email@gmail.com") {
+            loginError.innerHTML = `⚠️ Estás dentro con ${user.email}, pero aún no has configurado tu correo en el código. Edita app.js y cambia ALLOWED_EMAIL por tu correo real.`;
+            loginError.classList.remove('hidden');
+            loginScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            initAppOnce();
+        } else {
+            loginScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+            initAppOnce();
+        }
+    } else {
+        loginScreen.classList.remove('hidden');
+        mainApp.classList.add('hidden');
+    }
+});
+
+let appInitialized = false;
+function initAppOnce() {
+    if (appInitialized) return;
+    appInitialized = true;
+    
     elDate.textContent = formatDate(new Date().toISOString());
     document.getElementById('date').valueAsDate = new Date();
     
     setupEventListeners();
     listenToFirebase();
 }
+
+document.getElementById('btnLogin').addEventListener('click', async () => {
+    const loginError = document.getElementById('loginError');
+    loginError.classList.add('hidden');
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("Error al iniciar sesión:", error);
+        loginError.textContent = "Error al iniciar sesión: " + error.message + " (Recuerda habilitar Google Sign-In en Firebase Console)";
+        loginError.classList.remove('hidden');
+    }
+});
 
 function listenToFirebase() {
     try {
@@ -164,6 +230,10 @@ async function analyzeTicketWithAI(base64Str) {
     aiStatus.classList.remove('hidden');
     
     try {
+        if (!settings.geminiKey) {
+            alert("⚠️ No has configurado la API Key. Ve a los ajustes (el icono del engranaje) y pon tu clave de Gemini.");
+            return;
+        }
         const genAI = new GoogleGenerativeAI(settings.geminiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         
@@ -177,7 +247,7 @@ async function analyzeTicketWithAI(base64Str) {
            "type": "gasto",
            "category": "Comida"
         }
-        Elige category estrictamente entre: Comida, Ocio, Transporte, Facturas, Otros.`;
+        Elige category estrictamente entre: Comida supermercado, Comidas fuera, Ocio, Transporte, Facturas, Ropa, Otros.`;
         
         const image = {
             inlineData: { data: base64Data, mimeType: mimeType }
@@ -186,7 +256,13 @@ async function analyzeTicketWithAI(base64Str) {
         const result = await model.generateContent([prompt, image]);
         const responseText = result.response.text();
         
-        const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        let jsonStr = responseText;
+        const match = responseText.match(/\{[\s\S]*\}/);
+        if (match) {
+            jsonStr = match[0];
+        } else {
+            jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        }
         const data = JSON.parse(jsonStr);
         
         if (data.concept) document.getElementById('concept').value = data.concept;
@@ -197,7 +273,7 @@ async function analyzeTicketWithAI(base64Str) {
         }
     } catch(err) {
         console.error("AI Error:", err);
-        alert("No se pudo analizar el ticket con la IA. Comprueba tu API Key.");
+        alert("No se pudo analizar el ticket con la IA. Error: " + err.message + "\n\nComprueba que tu API Key está bien puesta en la ruedecilla de ajustes.");
     } finally {
         aiStatus.classList.add('hidden');
     }
@@ -218,6 +294,8 @@ function closeModal(modal) {
     modal.classList.remove('active');
     if(modal === addModal) {
         addForm.reset();
+        document.getElementById('editTransactionId').value = '';
+        document.querySelector('#addModal h2').innerHTML = 'Nuevo Movimiento';
         document.getElementById('date').valueAsDate = new Date();
         ticketPreview.classList.add('hidden');
         ticketPreview.src = '';
@@ -259,18 +337,31 @@ async function handleAddTransaction(e) {
             photoUrl = await getDownloadURL(snapshot.ref);
         }
 
+        const editId = document.getElementById('editTransactionId').value;
+        
+        // Si no subió foto nueva, mantenemos la anterior si está editando
+        if (!photoUrl && editId) {
+            const existingT = transactions.find(x => x.id === editId);
+            if (existingT && ticketPreview.src === existingT.photo) {
+                photoUrl = existingT.photo;
+            }
+        }
+
         const transactionData = {
             type,
             amount,
             concept,
             category,
             date,
-            photo: photoUrl,
-            timestamp: new Date().getTime()
+            photo: photoUrl
         };
 
-        // Guardar en Firestore Database
-        await addDoc(collection(db, "transactions"), transactionData);
+        if (editId) {
+            await updateDoc(doc(db, "transactions", editId), transactionData);
+        } else {
+            transactionData.timestamp = new Date().getTime();
+            await addDoc(collection(db, "transactions"), transactionData);
+        }
         
         closeModal(addModal);
     } catch (error) {
@@ -315,7 +406,7 @@ function calculateAntigravityEngine() {
     transactions.forEach(t => {
         const d = new Date(t.date);
         if (t.type === 'gasto' && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-            if (t.amount <= 6 && (t.category === 'Ocio' || t.category === 'Comida' || t.category === 'Otros')) {
+            if (t.amount <= 6 && (t.category === 'Ocio' || t.category === 'Comida' || t.category === 'Comidas fuera' || t.category === 'Comida supermercado' || t.category === 'Otros')) {
                 hormigaTotal += t.amount;
                 hormigaCount++;
             }
@@ -335,7 +426,7 @@ function calculateMetrics() {
     let monthExpenseStr = 0;
     let monthIncomeStr = 0;
     
-    let categoryTotals = { 'Comida': 0, 'Ocio': 0, 'Transporte': 0, 'Facturas': 0, 'Otros': 0 };
+    let categoryTotals = { 'Comida supermercado': 0, 'Comidas fuera': 0, 'Ocio': 0, 'Transporte': 0, 'Facturas': 0, 'Ropa': 0, 'Otros': 0 };
 
     transactions.forEach(t => {
         if (t.type === 'gasto') totalExpense += t.amount;
@@ -356,15 +447,23 @@ function calculateMetrics() {
     const start = new Date(settings.startDate);
     const balance = settings.capital + totalIncome - totalExpense;
     
-    const endOfCourse = new Date('2027-06-30');
+    const endOfCourse = new Date('2027-07-31');
     let remainingDays = Math.max(1, Math.floor((endOfCourse - now) / (1000 * 60 * 60 * 24)));
     
-    let endMonth = endOfCourse.getMonth();
-    let endYear = endOfCourse.getFullYear();
-    let remainingMonthsRent = (endYear - currentYear) * 12 + (endMonth - currentMonth);
-    if (remainingMonthsRent < 0) remainingMonthsRent = 0;
+    // Contar cuántos meses de alquiler quedan realmente pendientes verificando los pagos
+    let rentMonthsPending = 0;
+    RENT_MONTHS.forEach(rm => {
+        const isPaid = transactions.some(t => {
+            const d = new Date(t.date);
+            return t.type === 'gasto' && 
+                   d.getFullYear() === rm.y && 
+                   d.getMonth() === rm.m && 
+                   t.concept.toLowerCase().includes('alquiler');
+        });
+        if (!isPaid) rentMonthsPending++;
+    });
     
-    const availableForDaily = balance - (remainingMonthsRent * settings.rent);
+    const availableForDaily = balance - (rentMonthsPending * settings.rent);
     let dailyBudget = availableForDaily > 0 ? (availableForDaily / remainingDays) : 0;
 
     const daysSinceStart = Math.max(1, Math.floor((now - start) / (1000 * 60 * 60 * 24)));
@@ -382,7 +481,8 @@ function calculateMetrics() {
         monthIncome: monthIncomeStr,
         dailyBudget,
         viabilityMonths,
-        categoryTotals
+        categoryTotals,
+        rentMonthsPending
     };
 }
 
@@ -397,6 +497,31 @@ function renderDashboard() {
     elMonthExpense.textContent = formatCurrency(metrics.monthExpense);
     elMonthIncome.textContent = formatCurrency(metrics.monthIncome);
     elDailyBudget.textContent = formatCurrency(metrics.dailyBudget);
+    
+    // Render Rent Tracking
+    const rentList = document.getElementById('rentList');
+    if (rentList) {
+        rentList.innerHTML = '';
+        RENT_MONTHS.forEach(rm => {
+            const isPaid = transactions.some(t => {
+                const d = new Date(t.date);
+                return t.type === 'gasto' && 
+                       d.getFullYear() === rm.y && 
+                       d.getMonth() === rm.m && 
+                       t.concept.toLowerCase().includes('alquiler');
+            });
+            
+            const div = document.createElement('div');
+            div.className = `rent-month ${isPaid ? 'paid' : 'pending'}`;
+            div.innerHTML = `<span>${rm.label}</span> <i class="fa-solid ${isPaid ? 'fa-check' : 'fa-clock'}"></i>`;
+            rentList.appendChild(div);
+        });
+        
+        const rentPendingCount = document.getElementById('rentPendingCount');
+        if (rentPendingCount) {
+            rentPendingCount.textContent = `${metrics.rentMonthsPending} pendientes`;
+        }
+    }
     
     elViability.textContent = metrics.viabilityMonths > 99 ? '∞ meses' : `${metrics.viabilityMonths.toFixed(1)} meses`;
     if(metrics.viabilityMonths < 3 && metrics.balance > 0) {
@@ -435,7 +560,7 @@ function renderDashboard() {
     const catList = document.getElementById('categoryList');
     if (catList) {
         catList.innerHTML = '';
-        const catColors = { 'Comida': '#10b981', 'Ocio': '#8b5cf6', 'Transporte': '#f59e0b', 'Facturas': '#ef4444', 'Otros': '#64748b' };
+        const catColors = { 'Comida': '#10b981', 'Comida supermercado': '#10b981', 'Comidas fuera': '#f43f5e', 'Ocio': '#8b5cf6', 'Transporte': '#f59e0b', 'Facturas': '#ef4444', 'Ropa': '#ec4899', 'Otros': '#64748b' };
         const sortedCats = Object.entries(metrics.categoryTotals).sort((a,b) => b[1] - a[1]);
         
         sortedCats.forEach(([cat, amount]) => {
@@ -547,10 +672,47 @@ function createTransactionElement(t) {
         <div class="transaction-amount ${amountClass}">
             ${sign}${formatCurrency(t.amount)}
             ${ticketHTML}
+            <div class="transaction-actions" style="margin-top: 8px; display: flex; gap: 12px; justify-content: flex-end;">
+                <button onclick="window.editTransaction('${t.id}')" style="background:none; border:none; color: var(--text-secondary); cursor:pointer; font-size: 0.9rem;" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="window.deleteTransaction('${t.id}')" style="background:none; border:none; color: var(--danger); cursor:pointer; font-size: 0.9rem;" title="Borrar"><i class="fa-solid fa-trash"></i></button>
+            </div>
         </div>
     `;
     return div;
 }
+
+window.editTransaction = function(id) {
+    const t = transactions.find(x => x.id === id);
+    if (!t) return;
+    
+    document.getElementById('editTransactionId').value = t.id;
+    document.querySelector(`input[name="type"][value="${t.type}"]`).checked = true;
+    document.getElementById('amount').value = t.amount;
+    document.getElementById('concept').value = t.concept;
+    document.getElementById('category').value = t.category || 'Otros';
+    document.getElementById('date').value = t.date;
+    
+    if (t.photo) {
+        ticketPreview.src = t.photo;
+        ticketPreview.classList.remove('hidden');
+    } else {
+        ticketPreview.src = '';
+        ticketPreview.classList.add('hidden');
+    }
+    
+    document.querySelector('#addModal h2').innerHTML = '<i class="fa-solid fa-pen"></i> Editar Movimiento';
+    openModal(addModal);
+};
+
+window.deleteTransaction = async function(id) {
+    if(confirm('¿Estás seguro de que quieres borrar este gasto?')) {
+        try {
+            await deleteDoc(doc(db, "transactions", id));
+        } catch(e) {
+            alert('Error al borrar: ' + e.message);
+        }
+    }
+};
 
 window.viewTicket = function(id) {
     const t = transactions.find(x => x.id === id);
@@ -579,4 +741,5 @@ function exportCSV() {
     document.body.removeChild(link);
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// La inicialización la hace ahora onAuthStateChanged
+// document.addEventListener('DOMContentLoaded', init);
