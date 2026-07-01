@@ -26,7 +26,7 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 // Pon aquí tu correo para que SOLO TÚ puedas entrar
-const ALLOWED_EMAIL = "ivan.sanchez.roman@gmail.com"; 
+const ALLOWED_EMAIL = "ivan.sanchez.roman09@gmail.com"; 
 
 // ===== Constants & State =====
 let transactions = [];
