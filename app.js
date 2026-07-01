@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
@@ -15,9 +15,11 @@ const firebaseConfig = {
   measurementId: "G-YSBV27Y079"
 };
 
-// Initialize Firebase
+// Initialize Firebase con caché local para carga ultra rápida
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+});
 const storage = getStorage(app);
 
 // ===== Constants & State =====
@@ -158,8 +160,10 @@ async function analyzeTicketWithAI(base64Str) {
         {
            "concept": "Resumen del lugar o compra (ej: Mercadona, Gasolinera Repsol)",
            "amount": 23.50,
-           "type": "gasto"
-        }`;
+           "type": "gasto",
+           "category": "Comida"
+        }
+        Elige category estrictamente entre: Comida, Ocio, Transporte, Facturas, Otros.`;
         
         const image = {
             inlineData: { data: base64Data, mimeType: mimeType }
@@ -173,6 +177,7 @@ async function analyzeTicketWithAI(base64Str) {
         
         if (data.concept) document.getElementById('concept').value = data.concept;
         if (data.amount) document.getElementById('amount').value = data.amount;
+        if (data.category) document.getElementById('category').value = data.category;
         if (data.type) {
             document.querySelector(`input[name="type"][value="${data.type}"]`).checked = true;
         }
@@ -229,6 +234,7 @@ async function handleAddTransaction(e) {
         const amount = parseFloat(document.getElementById('amount').value);
         const concept = document.getElementById('concept').value;
         const date = document.getElementById('date').value;
+        const category = document.getElementById('category').value;
         
         let photoUrl = null;
         
@@ -243,6 +249,7 @@ async function handleAddTransaction(e) {
             type,
             amount,
             concept,
+            category,
             date,
             photo: photoUrl,
             timestamp: new Date().getTime()
@@ -271,6 +278,8 @@ function calculateMetrics() {
     let totalIncome = 0;
     let monthExpenseStr = 0;
     let monthIncomeStr = 0;
+    
+    let categoryTotals = { 'Comida': 0, 'Ocio': 0, 'Transporte': 0, 'Facturas': 0, 'Otros': 0 };
 
     transactions.forEach(t => {
         if (t.type === 'gasto') totalExpense += t.amount;
@@ -278,7 +287,12 @@ function calculateMetrics() {
         
         const tDate = new Date(t.date);
         if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-            if (t.type === 'gasto') monthExpenseStr += t.amount;
+            if (t.type === 'gasto') {
+                monthExpenseStr += t.amount;
+                let cat = t.category || 'Otros';
+                if (!categoryTotals[cat]) categoryTotals[cat] = 0;
+                categoryTotals[cat] += t.amount;
+            }
             if (t.type === 'ingreso') monthIncomeStr += t.amount;
         }
     });
@@ -310,7 +324,8 @@ function calculateMetrics() {
         monthExpense: monthExpenseStr,
         monthIncome: monthIncomeStr,
         dailyBudget,
-        viabilityMonths
+        viabilityMonths,
+        categoryTotals
     };
 }
 
@@ -328,6 +343,34 @@ function renderDashboard() {
         elViability.className = 'insight-value text-danger';
     } else {
         elViability.className = 'insight-value';
+    }
+
+    const catList = document.getElementById('categoryList');
+    if (catList) {
+        catList.innerHTML = '';
+        const catColors = { 'Comida': '#10b981', 'Ocio': '#8b5cf6', 'Transporte': '#f59e0b', 'Facturas': '#ef4444', 'Otros': '#64748b' };
+        const sortedCats = Object.entries(metrics.categoryTotals).sort((a,b) => b[1] - a[1]);
+        
+        sortedCats.forEach(([cat, amount]) => {
+            if (amount > 0) {
+                let percentage = metrics.monthExpense > 0 ? (amount / metrics.monthExpense) * 100 : 0;
+                let color = catColors[cat] || '#64748b';
+                catList.innerHTML += `
+                    <div class="category-bar-container">
+                        <div class="category-bar-header">
+                            <span>${cat}</span>
+                            <span>${formatCurrency(amount)}</span>
+                        </div>
+                        <div class="category-bar-bg">
+                            <div class="category-bar-fill" style="width: ${percentage}%; background-color: ${color}"></div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        if (metrics.monthExpense === 0) {
+            catList.innerHTML = '<p class="empty-state">No hay gastos categorizados este mes.</p>';
+        }
     }
 
     elRecentTransactions.innerHTML = '';
