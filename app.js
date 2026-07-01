@@ -82,10 +82,10 @@ function init() {
 function listenToFirebase() {
     const q = query(collection(db, "transactions"), orderBy("timestamp", "desc"));
     
-    onSnapshot(q, (snapshot) => {
+    onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
         transactions = [];
         snapshot.forEach((doc) => {
-            transactions.push({ id: doc.id, ...doc.data() });
+            transactions.push({ id: doc.id, ...doc.data(), pending: doc.metadata.hasPendingWrites });
         });
         
         renderDashboard();
@@ -269,6 +269,48 @@ async function handleAddTransaction(e) {
 }
 
 // ===== Calculations =====
+function calculateAntigravityEngine() {
+    let streak = 0;
+    const now = new Date();
+    let checkDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const expensesByDay = {};
+    transactions.forEach(t => {
+        if(t.type === 'gasto') {
+            const d = new Date(t.date);
+            const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            expensesByDay[key] = (expensesByDay[key] || 0) + t.amount;
+        }
+    });
+
+    for(let i=0; i<30; i++) {
+        const key = `${checkDate.getFullYear()}-${checkDate.getMonth()}-${checkDate.getDate()}`;
+        if (!expensesByDay[key] || expensesByDay[key] === 0) {
+            streak++;
+        } else {
+            break;
+        }
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    let hormigaTotal = 0;
+    let hormigaCount = 0;
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    transactions.forEach(t => {
+        const d = new Date(t.date);
+        if (t.type === 'gasto' && d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+            if (t.amount <= 6 && (t.category === 'Ocio' || t.category === 'Comida' || t.category === 'Otros')) {
+                hormigaTotal += t.amount;
+                hormigaCount++;
+            }
+        }
+    });
+
+    return { streak, hormigaTotal, hormigaCount };
+}
+
 function calculateMetrics() {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -332,6 +374,7 @@ function calculateMetrics() {
 // ===== Rendering =====
 function renderDashboard() {
     const metrics = calculateMetrics();
+    const engine = calculateAntigravityEngine();
     
     elTotalBalance.textContent = formatCurrency(metrics.balance);
     elMonthExpense.textContent = formatCurrency(metrics.monthExpense);
@@ -343,6 +386,33 @@ function renderDashboard() {
         elViability.className = 'insight-value text-danger';
     } else {
         elViability.className = 'insight-value';
+    }
+
+    const streakEl = document.getElementById('streakIndicator');
+    if (streakEl) {
+        if (engine.streak >= 1) {
+            streakEl.classList.remove('hidden');
+            document.getElementById('streakDays').textContent = engine.streak;
+        } else {
+            streakEl.classList.add('hidden');
+        }
+    }
+
+    const alertsContainer = document.getElementById('antigravityAlerts');
+    if (alertsContainer) {
+        alertsContainer.innerHTML = '';
+        if (engine.hormigaTotal > 20) {
+            const diasSuper = (engine.hormigaTotal / (metrics.dailyBudget || 1)).toFixed(1);
+            alertsContainer.innerHTML += `
+                <div class="alert-card">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div class="alert-content">
+                        <p><strong>Alerta Gasto Hormiga:</strong> ${formatCurrency(engine.hormigaTotal)} en ${engine.hormigaCount} micropagos.</p>
+                        <p style="font-size: 0.75rem; opacity: 0.8; margin-top:4px;">Equivale a ${diasSuper} días completos de tu presupuesto. 🚨</p>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     const catList = document.getElementById('categoryList');
@@ -438,6 +508,10 @@ function createTransactionElement(t) {
     const amountClass = isExpense ? 'text-danger' : 'text-success';
     const sign = isExpense ? '-' : '+';
     
+    let syncHTML = t.pending 
+        ? `<i class="fa-solid fa-cloud-arrow-up sync-status" title="Sincronizando con la nube..."></i>` 
+        : `<i class="fa-solid fa-cloud-check sync-status synced" title="Guardado en Firebase"></i>`;
+    
     let ticketHTML = '';
     if (t.photo) {
         ticketHTML = `<div class="has-ticket" onclick="viewTicket('${t.id}')">
@@ -450,7 +524,7 @@ function createTransactionElement(t) {
             <i class="fa-solid ${iconClass}"></i>
         </div>
         <div class="transaction-details">
-            <div class="transaction-title">${t.concept}</div>
+            <div class="transaction-title">${t.concept} ${syncHTML}</div>
             <div class="transaction-date">${formatDate(t.date)}</div>
         </div>
         <div class="transaction-amount ${amountClass}">

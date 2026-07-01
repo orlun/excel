@@ -40,10 +40,16 @@
                 </div>
             </header>
 
+            <!-- Alertas Inteligentes (Antigravity Engine) -->
+            <div id="antigravityAlerts" class="alerts-container"></div>
+
             <section class="balance-card glass-panel">
                 <div class="balance-header">
-                    <p>Capital Disponible</p>
+                    <p>Capital Operativo Libre</p>
                     <button id="btnSettings"><i class="fa-solid fa-gear"></i></button>
+                </div>
+                <div class="streak-indicator hidden" id="streakIndicator">
+                    <i class="fa-solid fa-fire"></i> <span id="streakDays">0</span> días en modo ahorro
                 </div>
                 <h2 id="totalBalance">0.00 €</h2>
                 <div class="balance-stats">
@@ -85,6 +91,13 @@
                             <p class="insight-value" id="viability">0 meses</p>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section class="categories-breakdown">
+                <h3 class="section-title">Gastos por Categoría (Mes actual)</h3>
+                <div id="categoryList" class="category-list">
+                    <!-- Barras de categoría inyectadas vía JS -->
                 </div>
             </section>
 
@@ -145,6 +158,17 @@
                     <div class="form-group">
                         <label for="concept">Concepto</label>
                         <input type="text" id="concept" placeholder="Ej: Compra supermercado" required>
+                    </div>
+
+                    <div class="form-group" id="categoryGroup">
+                        <label for="category">Categoría</label>
+                        <select id="category" class="modern-select" required>
+                            <option value="Comida">🛒 Comida (Supermercado, bares...)</option>
+                            <option value="Ocio">🍿 Ocio (Cine, suscripciones, fiestas...)</option>
+                            <option value="Transporte">🚌 Transporte (Gasolina, bonobús...)</option>
+                            <option value="Facturas">💡 Facturas (Luz, internet...)</option>
+                            <option value="Otros">📦 Otros</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
