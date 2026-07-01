@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control Financiero Pro</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -45,13 +45,14 @@
 
             <section class="balance-card glass-panel">
                 <div class="balance-header">
-                    <p>Capital Operativo Libre</p>
+                    <p>Disponible (Piso descontado)</p>
                     <button id="btnSettings"><i class="fa-solid fa-gear"></i></button>
                 </div>
                 <div class="streak-indicator hidden" id="streakIndicator">
                     <i class="fa-solid fa-fire"></i> <span id="streakDays">0</span> días en modo ahorro
                 </div>
-                <h2 id="totalBalance">0.00 €</h2>
+                <h2 id="availableBalance">0.00 €</h2>
+                <p class="total-raw-balance">Dinero Total en el banco: <strong id="totalBalance">0.00 €</strong></p>
                 <div class="balance-stats">
                     <div class="stat">
                         <i class="fa-solid fa-arrow-trend-down text-danger"></i>
@@ -241,6 +242,6 @@
         </div>
     </div>
     
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=2"></script>
 </body>
 </html>

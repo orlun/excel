@@ -46,6 +46,7 @@ const navItems = document.querySelectorAll('.bottom-nav .nav-item[data-tab]');
 const tabContents = document.querySelectorAll('.tab-content');
 
 const elDate = document.getElementById('currentDate');
+const elAvailableBalance = document.getElementById('availableBalance');
 const elTotalBalance = document.getElementById('totalBalance');
 const elMonthExpense = document.getElementById('monthExpense');
 const elMonthIncome = document.getElementById('monthIncome');
@@ -376,6 +377,7 @@ function calculateMetrics() {
 
     return {
         balance,
+        availableForDaily,
         monthExpense: monthExpenseStr,
         monthIncome: monthIncomeStr,
         dailyBudget,
@@ -389,7 +391,9 @@ function renderDashboard() {
     const metrics = calculateMetrics();
     const engine = calculateAntigravityEngine();
     
-    elTotalBalance.textContent = formatCurrency(metrics.balance);
+    if (elAvailableBalance) elAvailableBalance.textContent = formatCurrency(metrics.availableForDaily);
+    if (elTotalBalance) elTotalBalance.textContent = formatCurrency(metrics.balance);
+    
     elMonthExpense.textContent = formatCurrency(metrics.monthExpense);
     elMonthIncome.textContent = formatCurrency(metrics.monthIncome);
     elDailyBudget.textContent = formatCurrency(metrics.dailyBudget);
